@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Snake Pixel Cute 🍓</title>
+<meta name="viewport"
+content="width=device-width, height=device-height, initial-scale=1.0,
+maximum-scale=1.0, user-scalable=no">
+<style>
+body{
+    margin:0;
+    background:#222;
+    color:white;
+    text-align:center;
+    font-family:Arial;
+    touch-action:none;
+}
+canvas{
+    background:black;
+    border:3px solid lime;
+}
+#overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+}
+#overlay div{
+    background:#111;
+    border:3px solid lime;
+    padding:25px;
+    border-radius:15px;
+}
+button{
+    font-size:22px;
+    padding:10px 20px;
+    border:none;
+    border-radius:10px;
+    background:lime;
+}
+#pauseBtn{
+    position:fixed;
+    top:10px;
+    right:10px;
+    font-size:26px;
+    padding:8px 15px;
+    border-radius:50%;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🐍 Snake Pixel Cute 🍓</h1>
+<h2 id="score">Điểm: 0</h2>
+<h3 id="highScore">🏆 High Score: 0</h3>
+<button id="pauseBtn">⏸</button>
+
+<canvas id="game" width="400" height="400"></canvas>
+
+<div id="overlay">
+  <div>
+    <h1>💀 GAME OVER</h1>
+    <p id="finalScore"></p>
+    <button onclick="resetGame()">▶ Chơi lại</button>
+  </div>
+</div>
+
+<script>
+/* ===== ÂM THANH ===== */
+const eatSound = new Audio("eat.mp3");
+const clapSound = new Audio("applause.mp3");
+const gameOverSound = new Audio("gameover.mp3");
+
+/* ===== BIẾN ===== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const box = 20;
+
+let snake = [{x:200,y:200}];
+let direction = "";
+let score = 0;
+let paused = false;
+let gameOver = false;
+let highScore = localStorage.getItem("snakeHighScore") || 0;
+let highScoreBeaten = false;
+let confetti = [];
+
+document.getElementById("highScore").innerText = "🏆 High Score: "+highScore;
+
+let food = {
+    x: Math.floor(Math.random()*20)*box,
+    y: Math.floor(Math.random()*20)*box
+};
+
+/* ===== PAUSE ===== */
+const pauseBtn = document.getElementById("pauseBtn");
+pauseBtn.onclick = ()=>{
+    paused = !paused;
+    pauseBtn.innerText = paused ? "▶" : "⏸";
+};
+
+/* ===== ĐIỀU KHIỂN ===== */
+document.addEventListener("keydown",e=>{
+    if(e.key==="p"||e.key==="P") pauseBtn.onclick();
+    if(e.key==="ArrowLeft"&&direction!=="RIGHT")direction="LEFT";
+    if(e.key==="ArrowUp"&&direction!=="DOWN")direction="UP";
+    if(e.key==="ArrowRight"&&direction!=="LEFT")direction="RIGHT";
+    if(e.key==="ArrowDown"&&direction!=="UP")direction="DOWN";
+});
+
+/* ===== RESET ===== */
+function resetGame(){
+    document.getElementById("overlay").style.display="none";
+    snake=[{x:200,y:200}];
+    direction="";
+    score=0;
+    paused=false;
+    gameOver=false;
+    highScoreBeaten=false;
+    confetti=[];
+    document.getElementById("score").innerText="Điểm: 0";
+    pauseBtn.innerText="⏸";
+}
+
+/* ===== VẼ ĐẦU RẮN ===== */
+function drawSnakeHead(x,y){
+    const art=[
+        "00111100","01111110","11311131","11111111",
+        "11111111","01111110","00111100","00000000"
+    ];
+    const s=box/8;
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=art[r][c]; if(p==="0")continue;
+        ctx.fillStyle=p==="1"?"#00ff66":"#ff99cc";
+        ctx.fillRect(x+c*s,y+r*s,s,s);
+    }
+    ctx.fillStyle="black";
+    ctx.fillRect(x+6,y+8,3,3);
+    ctx.fillRect(x+11,y+8,3,3);
+}
+
+function drawSnakeBody(x,y){
+    ctx.fillStyle="#66ff99";
+    for(let i=0;i<box;i+=4)
+        for(let j=0;j<box;j+=4)
+            ctx.fillRect(x+i,y+j,3,3);
+}
+
+/* ===== 🍓 DÂU CUTE ===== */
+function drawStrawberry(x,y){
+    const art=[
+        "00333000","02222220","22222222","22111212",
+        "22121112","22222222","02222220","00022000"
+    ];
+    const s=box/8;
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=art[r][c]; if(p==="0")continue;
+        ctx.fillStyle=
+            p==="1"?"#ffd966":
+            p==="2"?"#ff3b3b":"#2ecc71";
+        ctx.fillRect(x+c*s,y+r*s,s,s);
+    }
+}
+
+/* ===== 🎉 PHÁO GIẤY ===== */
+function spawnConfetti(){
+    for(let i=0;i<100;i++){
+        confetti.push({
+            x:Math.random()*canvas.width,
+            y:-10,
+            vy:Math.random()*3+2,
+            size:Math.random()*4+3,
+            color:`hsl(${Math.random()*360},100%,60%)`
+        });
+    }
+}
+function drawConfetti(){
+    confetti.forEach(p=>{
+        ctx.fillStyle=p.color;
+        ctx.fillRect(p.x,p.y,p.size,p.size);
+        p.y+=p.vy;
+    });
+    confetti = confetti.filter(p=>p.y<canvas.height);
+}
+
+/* ===== GAME LOOP ===== */
+function gameLoop(){
+    if(paused||gameOver) return;
+
+    ctx.clearRect(0,0,400,400);
+
+    snake.forEach((p,i)=>i===0?drawSnakeHead(p.x,p.y):drawSnakeBody(p.x,p.y));
+    drawStrawberry(food.x,food.y);
+    drawConfetti();
+
+    let hx=snake[0].x;
+    let hy=snake[0].y;
+
+    if(direction==="LEFT")hx-=box;
+    if(direction==="UP")hy-=box;
+    if(direction==="RIGHT")hx+=box;
+    if(direction==="DOWN")hy+=box;
+
+    if(hx===food.x&&hy===food.y){
+        score++;
+        eatSound.play();
+        document.getElementById("score").innerText="Điểm: "+score;
+
+        if(score>highScore){
+            highScore=score;
+            localStorage.setItem("snakeHighScore",highScore);
+            document.getElementById("highScore").innerText="🏆 High Score: "+highScore;
+            if(!highScoreBeaten){
+                clapSound.play();
+                spawnConfetti();
+                highScoreBeaten=true;
+            }
+        }
+        food={x:Math.floor(Math.random()*20)*box,y:Math.floor(Math.random()*20)*box};
+    }else snake.pop();
+
+    const nh={x:hx,y:hy};
+    if(hx<0||hy<0||hx>=400||hy>=400||snake.some(p=>p.x===hx&&p.y===hy)){
+        gameOverSound.play();
+        gameOver=true;
+        document.getElementById("finalScore").innerText=
+            "Điểm: "+score+" | High Score: "+highScore;
+        document.getElementById("overlay").style.display="flex";
+        return;
+    }
+    snake.unshift(nh);
+}
+setInterval(gameLoop,120);
+
+/* 📱 KHÓA NGANG */
+if(screen.orientation) screen.orientation.lock("landscape").catch(()=>{});
+</script>
+
+</body>
+</html>
